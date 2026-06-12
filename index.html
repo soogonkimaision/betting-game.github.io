@@ -246,6 +246,7 @@
 
       .entry {
         display: flex;
+        align-items: center;
         justify-content: space-between;
         gap: 12px;
         padding: 12px;
@@ -253,9 +254,23 @@
         background: var(--white);
       }
 
+      .entry-info {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+
       .entry strong,
       .entry span {
         overflow-wrap: anywhere;
+      }
+
+      .delete-entry {
+        min-width: 58px;
+        min-height: 34px;
+        padding: 0 10px;
+        background: var(--red);
+        font-size: 13px;
       }
 
       .empty {
@@ -370,7 +385,18 @@
         state: document.querySelector("#state"),
       };
       const storageKey = "czech-korea-worldcup-picks";
+      const sharedDatabase = {
+        supabaseUrl: "",
+        anonKey: "",
+        table: "predictions",
+      };
       let memoryPicks = [];
+
+      const isSharedMode = Boolean(sharedDatabase.supabaseUrl && sharedDatabase.anonKey);
+      const createId = () => {
+        if (crypto.randomUUID) return crypto.randomUUID();
+        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      };
 
       const getDeadline = () => {
         const now = new Date();
@@ -381,18 +407,26 @@
 
       const pad = (value) => String(value).padStart(2, "0");
 
-      const loadPicks = () => {
+      const getLocalPicks = () => {
         try {
           const stored = localStorage.getItem(storageKey);
           if (!stored) return memoryPicks;
           const parsed = JSON.parse(stored);
-          return Array.isArray(parsed) ? parsed : [];
+          if (!Array.isArray(parsed)) return [];
+          const normalized = parsed.map((pick) => ({
+            id: pick.id || createId(),
+            created_at: pick.created_at || new Date().toISOString(),
+            name: pick.name,
+            country: pick.country,
+          }));
+          if (JSON.stringify(parsed) !== JSON.stringify(normalized)) saveLocalPicks(normalized);
+          return normalized;
         } catch {
           return memoryPicks;
         }
       };
 
-      const savePicks = (picks) => {
+      const saveLocalPicks = (picks) => {
         memoryPicks = picks;
         try {
           localStorage.setItem(storageKey, JSON.stringify(picks));
@@ -401,19 +435,98 @@
         }
       };
 
-      const renderLeaderboard = () => {
-        const picks = loadPicks();
+      const supabaseHeaders = {
+        apikey: sharedDatabase.anonKey,
+        Authorization: `Bearer ${sharedDatabase.anonKey}`,
+        "Content-Type": "application/json",
+      };
+
+      const sharedEndpoint = () =>
+        `${sharedDatabase.supabaseUrl.replace(/\/$/, "")}/rest/v1/${sharedDatabase.table}`;
+
+      const loadPicks = async () => {
+        if (!isSharedMode) return getLocalPicks();
+
+        const response = await fetch(`${sharedEndpoint()}?select=id,name,country,created_at&order=created_at.desc`, {
+          headers: supabaseHeaders,
+        });
+
+        if (!response.ok) throw new Error("공유 리더보드를 불러오지 못했습니다.");
+        return response.json();
+      };
+
+      const createPick = async (pick) => {
+        if (!isSharedMode) {
+          const nextPicks = [{ id: createId(), created_at: new Date().toISOString(), ...pick }, ...getLocalPicks()];
+          saveLocalPicks(nextPicks);
+          return;
+        }
+
+        const response = await fetch(sharedEndpoint(), {
+          method: "POST",
+          headers: { ...supabaseHeaders, Prefer: "return=minimal" },
+          body: JSON.stringify(pick),
+        });
+
+        if (!response.ok) throw new Error("예측을 공유 리더보드에 저장하지 못했습니다.");
+      };
+
+      const deletePick = async (pickId) => {
+        if (!isSharedMode) {
+          saveLocalPicks(getLocalPicks().filter((pick) => pick.id !== pickId));
+          return;
+        }
+
+        const response = await fetch(`${sharedEndpoint()}?id=eq.${encodeURIComponent(pickId)}`, {
+          method: "DELETE",
+          headers: supabaseHeaders,
+        });
+
+        if (!response.ok) throw new Error("예측을 삭제하지 못했습니다.");
+      };
+
+      const renderLeaderboard = async () => {
+        let picks = [];
+
+        try {
+          picks = await loadPicks();
+        } catch (error) {
+          statusText.textContent = error.message;
+          picks = getLocalPicks();
+        }
+
         entries.innerHTML = "";
         empty.hidden = picks.length > 0;
 
         picks.forEach((pick, index) => {
           const item = document.createElement("li");
           item.className = "entry";
+          const info = document.createElement("div");
           const name = document.createElement("strong");
           const country = document.createElement("span");
+          const deleteButton = document.createElement("button");
+
+          info.className = "entry-info";
           name.textContent = `${index + 1}. ${pick.name}`;
           country.textContent = pick.country;
-          item.append(name, country);
+          deleteButton.className = "delete-entry";
+          deleteButton.type = "button";
+          deleteButton.textContent = "삭제";
+          deleteButton.setAttribute("aria-label", `${pick.name} 예측 삭제`);
+          deleteButton.addEventListener("click", async () => {
+            deleteButton.disabled = true;
+            try {
+              await deletePick(pick.id);
+              statusText.textContent = "예측이 삭제되었습니다.";
+              await renderLeaderboard();
+            } catch (error) {
+              statusText.textContent = error.message;
+              deleteButton.disabled = false;
+            }
+          });
+
+          info.append(name, country);
+          item.append(info, deleteButton);
           entries.append(item);
         });
       };
@@ -436,7 +549,7 @@
         }
       };
 
-      form.addEventListener("submit", (event) => {
+      form.addEventListener("submit", async (event) => {
         event.preventDefault();
 
         if (getDeadline() <= new Date()) {
@@ -453,17 +566,28 @@
           return;
         }
 
-        const picks = loadPicks();
-        picks.unshift({ name, country });
-        savePicks(picks);
-        form.reset();
-        statusText.textContent = "예측이 리더보드에 등록되었습니다.";
-        renderLeaderboard();
+        submitButton.disabled = true;
+
+        try {
+          await createPick({ name, country });
+          form.reset();
+          statusText.textContent = isSharedMode
+            ? "공유 리더보드에 등록되었습니다."
+            : "예측이 리더보드에 등록되었습니다.";
+          await renderLeaderboard();
+        } catch (error) {
+          statusText.textContent = error.message;
+        } finally {
+          updateCountdown();
+        }
       });
 
       renderLeaderboard();
       updateCountdown();
       setInterval(updateCountdown, 1000);
+      if (isSharedMode) {
+        setInterval(renderLeaderboard, 5000);
+      }
     </script>
   </body>
 </html>
