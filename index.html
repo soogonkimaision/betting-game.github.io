@@ -177,7 +177,7 @@
 
       .pick-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 10px;
       }
 
@@ -234,6 +234,17 @@
       .leaderboard h2 {
         margin: 0 0 14px;
         font-size: 24px;
+      }
+
+      .mode-note {
+        margin: 0 0 14px;
+        padding: 12px;
+        border: 1px solid #fedf89;
+        background: #fffaeb;
+        color: #93370d;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.45;
       }
 
       .entry-list {
@@ -356,6 +367,10 @@
                   <input type="radio" name="country" value="대한민국" />
                   <span>대한민국</span>
                 </label>
+                <label class="pick">
+                  <input type="radio" name="country" value="무승부" />
+                  <span>무승부</span>
+                </label>
               </div>
             </fieldset>
 
@@ -366,6 +381,7 @@
 
         <aside class="leaderboard" aria-labelledby="leaderboard-title">
           <h2 id="leaderboard-title">리더보드</h2>
+          <p id="mode-note" class="mode-note" hidden></p>
           <ul id="entries" class="entry-list"></ul>
           <p id="empty" class="empty">아직 입력된 예측이 없습니다.</p>
         </aside>
@@ -376,6 +392,7 @@
       const form = document.querySelector("#bet-form");
       const entries = document.querySelector("#entries");
       const empty = document.querySelector("#empty");
+      const modeNote = document.querySelector("#mode-note");
       const statusText = document.querySelector("#status");
       const submitButton = document.querySelector("#submit");
       const timeParts = {
@@ -406,6 +423,13 @@
       };
 
       const pad = (value) => String(value).padStart(2, "0");
+
+      const updateModeNote = () => {
+        modeNote.hidden = isSharedMode;
+        modeNote.textContent = isSharedMode
+          ? ""
+          : "현재 공유 DB가 연결되지 않아 이 브라우저에서 입력한 예측만 보입니다.";
+      };
 
       const getLocalPicks = () => {
         try {
@@ -583,6 +607,7 @@
       });
 
       renderLeaderboard();
+      updateModeNote();
       updateCountdown();
       setInterval(updateCountdown, 1000);
       if (isSharedMode) {

@@ -1,9 +1,16 @@
 create table if not exists public.predictions (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(name) <= 20),
-  country text not null check (country in ('체코', '대한민국')),
+  country text not null,
   created_at timestamptz not null default now()
 );
+
+alter table public.predictions
+drop constraint if exists predictions_country_check;
+
+alter table public.predictions
+add constraint predictions_country_check
+check (country in ('체코', '대한민국', '무승부'));
 
 alter table public.predictions enable row level security;
 
