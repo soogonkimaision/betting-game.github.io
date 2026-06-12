@@ -151,6 +151,20 @@
         font-weight: 800;
       }
 
+      fieldset {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+      }
+
+      legend {
+        padding: 0;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
       input[type="text"] {
         width: 100%;
         min-height: 48px;
@@ -316,8 +330,8 @@
               <input id="name" type="text" maxlength="20" placeholder="예: 민수" autocomplete="name" required />
             </label>
 
-            <label>
-              승리 국가 선택
+            <fieldset>
+              <legend>승리 국가 선택</legend>
               <div class="pick-grid">
                 <label class="pick">
                   <input type="radio" name="country" value="체코" required />
@@ -328,7 +342,7 @@
                   <span>대한민국</span>
                 </label>
               </div>
-            </label>
+            </fieldset>
 
             <button id="submit" type="submit">예측 입력</button>
             <p id="status" class="status" aria-live="polite"></p>
@@ -356,6 +370,7 @@
         state: document.querySelector("#state"),
       };
       const storageKey = "czech-korea-worldcup-picks";
+      let memoryPicks = [];
 
       const getDeadline = () => {
         const now = new Date();
@@ -366,8 +381,25 @@
 
       const pad = (value) => String(value).padStart(2, "0");
 
-      const loadPicks = () => JSON.parse(localStorage.getItem(storageKey) || "[]");
-      const savePicks = (picks) => localStorage.setItem(storageKey, JSON.stringify(picks));
+      const loadPicks = () => {
+        try {
+          const stored = localStorage.getItem(storageKey);
+          if (!stored) return memoryPicks;
+          const parsed = JSON.parse(stored);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return memoryPicks;
+        }
+      };
+
+      const savePicks = (picks) => {
+        memoryPicks = picks;
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(picks));
+        } catch {
+          statusText.textContent = "브라우저 저장소를 쓸 수 없어 현재 화면에만 표시됩니다.";
+        }
+      };
 
       const renderLeaderboard = () => {
         const picks = loadPicks();
@@ -412,9 +444,9 @@
           return;
         }
 
-        const formData = new FormData(form);
-        const name = formData.get("name").trim();
-        const country = formData.get("country");
+        const name = document.querySelector("#name").value.trim();
+        const checkedCountry = document.querySelector('input[name="country"]:checked');
+        const country = checkedCountry ? checkedCountry.value : "";
 
         if (!name || !country) {
           statusText.textContent = "이름과 승리 국가를 모두 입력해주세요.";
