@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>체코 vs 대한민국 승부 예측</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172033;
+        --muted: #667085;
+        --line: #d9dee8;
+        --paper: #f8fafc;
+        --white: #ffffff;
+        --red: #d92d20;
+        --blue: #155eef;
+        --green: #16803c;
+        --shadow: 0 18px 50px rgba(20, 32, 54, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          Pretendard,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: var(--ink);
+        background:
+          linear-gradient(rgba(11, 18, 32, 0.34), rgba(11, 18, 32, 0.54)),
+          url("https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1800&q=80")
+            center / cover fixed;
+      }
+
+      main {
+        width: min(980px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 42px 0;
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .panel,
+      .leaderboard {
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
+      }
+
+      .panel {
+        padding: 30px;
+      }
+
+      .leaderboard {
+        padding: 22px;
+      }
+
+      .match-label {
+        margin: 0 0 8px;
+        color: var(--blue);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      h1 {
+        margin: 0 0 18px;
+        font-size: clamp(34px, 6vw, 58px);
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+
+      .teams {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 20px 0 22px;
+      }
+
+      .team {
+        flex: 1;
+        min-height: 86px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        background: var(--white);
+        font-size: 22px;
+        font-weight: 900;
+      }
+
+      .versus {
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        color: var(--white);
+        background: var(--ink);
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .countdown {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin: 14px 0 26px;
+      }
+
+      .time-box {
+        padding: 14px 10px;
+        text-align: center;
+        border: 1px solid var(--line);
+        background: var(--paper);
+      }
+
+      .time-box strong {
+        display: block;
+        min-height: 36px;
+        color: var(--red);
+        font-size: 30px;
+        line-height: 1;
+      }
+
+      .time-box span {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      form {
+        display: grid;
+        gap: 16px;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        min-height: 48px;
+        padding: 0 14px;
+        border: 1px solid var(--line);
+        background: var(--white);
+        color: var(--ink);
+        font: inherit;
+      }
+
+      .pick-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .pick input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .pick span {
+        display: grid;
+        min-height: 58px;
+        place-items: center;
+        border: 2px solid var(--line);
+        background: var(--white);
+        font-size: 18px;
+        font-weight: 900;
+        cursor: pointer;
+        transition:
+          border-color 0.2s ease,
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .pick input:checked + span {
+        border-color: var(--blue);
+        box-shadow: inset 0 0 0 2px rgba(21, 94, 239, 0.15);
+        transform: translateY(-1px);
+      }
+
+      button {
+        min-height: 52px;
+        border: 0;
+        background: var(--green);
+        color: var(--white);
+        font: inherit;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        background: #98a2b3;
+        cursor: not-allowed;
+      }
+
+      .status {
+        min-height: 22px;
+        margin: 0;
+        color: var(--red);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .leaderboard h2 {
+        margin: 0 0 14px;
+        font-size: 24px;
+      }
+
+      .entry-list {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .entry {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        background: var(--white);
+      }
+
+      .entry strong,
+      .entry span {
+        overflow-wrap: anywhere;
+      }
+
+      .empty {
+        margin: 0;
+        padding: 18px;
+        border: 1px dashed var(--line);
+        color: var(--muted);
+        background: var(--paper);
+        text-align: center;
+        font-weight: 700;
+      }
+
+      @media (max-width: 820px) {
+        main {
+          padding: 18px 0;
+        }
+
+        .shell {
+          grid-template-columns: 1fr;
+        }
+
+        .panel,
+        .leaderboard {
+          padding: 18px;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .teams,
+        .pick-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .teams {
+          display: grid;
+        }
+
+        .versus {
+          justify-self: center;
+        }
+
+        .countdown {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="shell">
+        <section class="panel" aria-labelledby="page-title">
+          <p class="match-label">2026 월드컵 승부 예측</p>
+          <h1 id="page-title">체코 vs 대한민국</h1>
+
+          <div class="teams" aria-label="경기 국가">
+            <div class="team">체코</div>
+            <div class="versus">VS</div>
+            <div class="team">대한민국</div>
+          </div>
+
+          <p class="match-label">오늘 12시 베팅 마감까지</p>
+          <div class="countdown" aria-live="polite">
+            <div class="time-box"><strong id="hours">00</strong><span>시간</span></div>
+            <div class="time-box"><strong id="minutes">00</strong><span>분</span></div>
+            <div class="time-box"><strong id="seconds">00</strong><span>초</span></div>
+            <div class="time-box"><strong id="state">OPEN</strong><span>상태</span></div>
+          </div>
+
+          <form id="bet-form">
+            <label>
+              이름
+              <input id="name" type="text" maxlength="20" placeholder="예: 민수" autocomplete="name" required />
+            </label>
+
+            <label>
+              승리 국가 선택
+              <div class="pick-grid">
+                <label class="pick">
+                  <input type="radio" name="country" value="체코" required />
+                  <span>체코</span>
+                </label>
+                <label class="pick">
+                  <input type="radio" name="country" value="대한민국" />
+                  <span>대한민국</span>
+                </label>
+              </div>
+            </label>
+
+            <button id="submit" type="submit">예측 입력</button>
+            <p id="status" class="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <aside class="leaderboard" aria-labelledby="leaderboard-title">
+          <h2 id="leaderboard-title">리더보드</h2>
+          <ul id="entries" class="entry-list"></ul>
+          <p id="empty" class="empty">아직 입력된 예측이 없습니다.</p>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const form = document.querySelector("#bet-form");
+      const entries = document.querySelector("#entries");
+      const empty = document.querySelector("#empty");
+      const statusText = document.querySelector("#status");
+      const submitButton = document.querySelector("#submit");
+      const timeParts = {
+        hours: document.querySelector("#hours"),
+        minutes: document.querySelector("#minutes"),
+        seconds: document.querySelector("#seconds"),
+        state: document.querySelector("#state"),
+      };
+      const storageKey = "czech-korea-worldcup-picks";
+
+      const getDeadline = () => {
+        const now = new Date();
+        const deadline = new Date(now);
+        deadline.setHours(12, 0, 0, 0);
+        return deadline;
+      };
+
+      const pad = (value) => String(value).padStart(2, "0");
+
+      const loadPicks = () => JSON.parse(localStorage.getItem(storageKey) || "[]");
+      const savePicks = (picks) => localStorage.setItem(storageKey, JSON.stringify(picks));
+
+      const renderLeaderboard = () => {
+        const picks = loadPicks();
+        entries.innerHTML = "";
+        empty.hidden = picks.length > 0;
+
+        picks.forEach((pick, index) => {
+          const item = document.createElement("li");
+          item.className = "entry";
+          const name = document.createElement("strong");
+          const country = document.createElement("span");
+          name.textContent = `${index + 1}. ${pick.name}`;
+          country.textContent = pick.country;
+          item.append(name, country);
+          entries.append(item);
+        });
+      };
+
+      const updateCountdown = () => {
+        const diff = getDeadline() - new Date();
+        const isClosed = diff <= 0;
+        const remaining = Math.max(0, diff);
+        const hours = Math.floor(remaining / 1000 / 60 / 60);
+        const minutes = Math.floor((remaining / 1000 / 60) % 60);
+        const seconds = Math.floor((remaining / 1000) % 60);
+
+        timeParts.hours.textContent = pad(hours);
+        timeParts.minutes.textContent = pad(minutes);
+        timeParts.seconds.textContent = pad(seconds);
+        timeParts.state.textContent = isClosed ? "CLOSED" : "OPEN";
+        submitButton.disabled = isClosed;
+        if (isClosed) {
+          statusText.textContent = "베팅 마감 시간이 지났습니다.";
+        }
+      };
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        if (getDeadline() <= new Date()) {
+          updateCountdown();
+          return;
+        }
+
+        const formData = new FormData(form);
+        const name = formData.get("name").trim();
+        const country = formData.get("country");
+
+        if (!name || !country) {
+          statusText.textContent = "이름과 승리 국가를 모두 입력해주세요.";
+          return;
+        }
+
+        const picks = loadPicks();
+        picks.unshift({ name, country });
+        savePicks(picks);
+        form.reset();
+        statusText.textContent = "예측이 리더보드에 등록되었습니다.";
+        renderLeaderboard();
+      });
+
+      renderLeaderboard();
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+    </script>
+  </body>
+</html>
